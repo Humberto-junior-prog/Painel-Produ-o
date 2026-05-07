@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Production Item",
+      "description": "A product to be produced with its weekly schedule and progress.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productName": { "type": "string" },
+        "unit": { "type": "string" },
+        "assignee": { "type": "string" },
+        "isNew": { "type": "boolean" },
+        "order": { "type": "number" },
+        "plans": {
+          "type": "object",
+          "properties": {
+            "seg": { "type": "number" },
+            "ter": { "type": "number" },
+            "qua": { "type": "number" },
+            "qui": { "type": "number" },
+            "sex": { "type": "number" },
+            "sab": { "type": "number" },
+            "dom": { "type": "number" }
+          }
+        },
+        "history": {
+          "type": "object",
+          "properties": {
+            "seg": { "type": "boolean" },
+            "ter": { "type": "boolean" },
+            "qua": { "type": "boolean" },
+            "qui": { "type": "boolean" },
+            "sex": { "type": "boolean" },
+            "sab": { "type": "boolean" },
+            "dom": { "type": "boolean" }
+          }
+        },
+        "status": { "type": "string", "enum": ["Pendente", "Concluído"] },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["productName", "assignee", "status"]
+    },
+    "AppConfig": {
+      "title": "Application Configuration",
+      "description": "Global settings like team, notices, and maintenance.",
+      "type": "object",
+      "properties": {
+        "teamMembers": { "type": "array", "items": { "type": "string" } },
+        "teamColors": { "type": "object" },
+        "notices": { "type": "object" },
+        "maintenanceTasks": { "type": "array", "items": { "type": "object" } },
+        "lastWeeklyReset": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "List of products and their production status."
+    },
+    "/globalConfig/main": {
+      "schema": "AppConfig",
+      "description": "Main application configuration document."
+    }
+  }
+}

@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidProduct(data) {
+      return data.productName is string && data.productName.size() <= 100
+        && data.assignee is string && data.assignee.size() <= 100
+        && (data.status == 'Pendente' || data.status == 'Concluído')
+        && data.plans is map
+        && data.history is map;
+    }
+
+    match /products/{productId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidId(productId) && isValidProduct(incoming());
+      allow update: if isSignedIn() && (
+        // Action: Colaborador updates status
+        (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'history', 'updatedAt']) && (incoming().status == 'Pendente' || incoming().status == 'Concluído')) ||
+        // Action: Planejamento updates plans
+        (incoming().diff(existing()).affectedKeys().hasOnly(['plans', 'status', 'updatedAt'])) ||
+        // Action: Full edit (Gerente)
+        (incoming().diff(existing()).affectedKeys().hasOnly(['productName', 'assignee', 'unit', 'order', 'isNew', 'updatedAt', 'plans', 'history', 'status']) && isValidProduct(incoming()))
+      );
+      allow delete: if isSignedIn();
+    }
+
+    match /globalConfig/{configId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isValidId(configId);
+    }
+  }
+}
