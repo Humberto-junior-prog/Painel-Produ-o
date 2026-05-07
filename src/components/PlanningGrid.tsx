@@ -1,7 +1,7 @@
 import { ProductionTask, TeamMember } from '../types';
 import { RefreshCw, ChevronUp, ChevronDown, Trash2, Plus, PlusCircle, Users, UserPlus, UserCircle, Edit3, Check, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { useState, FocusEvent, FormEvent } from 'react';
+import { useState, useEffect, FocusEvent, FormEvent, ChangeEvent, KeyboardEvent } from 'react';
 
 interface PlanningGridProps {
   tasks: ProductionTask[];
@@ -51,6 +51,65 @@ const DAYS = [
   { key: 'dom', label: 'Dom' },
 ] as const;
 
+interface PlanInputProps {
+  initialValue: number;
+  onUpdate: (val: number) => void;
+}
+
+function PlanInput({ initialValue, onUpdate }: PlanInputProps) {
+  const [localValue, setLocalValue] = useState<string>(initialValue.toString());
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    if (!isEditing) {
+      setLocalValue(initialValue.toString());
+    }
+  }, [initialValue, isEditing]);
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    setLocalValue(e.target.value);
+  };
+
+  const handleBlur = () => {
+    setIsEditing(false);
+    const num = parseInt(localValue) || 0;
+    if (num !== initialValue) {
+      onUpdate(num);
+    }
+  };
+
+  const handleFocus = (e: FocusEvent<HTMLInputElement>) => {
+    setIsEditing(true);
+    e.target.select();
+  };
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    }
+    if (e.key === 'Escape') {
+      setLocalValue(initialValue.toString());
+      setIsEditing(false);
+      e.currentTarget.blur();
+    }
+  };
+
+  return (
+    <input 
+      type="number"
+      min="0"
+      value={localValue === '0' && !isEditing ? '' : localValue}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onChange={handleChange}
+      onKeyDown={handleKeyDown}
+      onWheel={(e) => (e.target as HTMLInputElement).blur()} // Prevent random changes on scroll
+      placeholder="0"
+      className="w-full bg-stone-100/50 border border-transparent focus:border-amber-400 focus:bg-white rounded-lg px-1 py-2 text-center text-xs font-black text-stone-900 transition-all outline-none"
+    />
+  );
+}
+
 export function PlanningGrid({ 
   tasks,
   weeklyPlans, 
@@ -74,15 +133,6 @@ export function PlanningGrid({
   const [editingMember, setEditingMember] = useState<string | null>(null);
   const [editMemberName, setEditMemberName] = useState('');
   const [selectedColor, setSelectedColor] = useState<{ bg: string, text: string, border: string } | null>(null);
-
-  const handleUpdate = (productId: string, day: string, value: string) => {
-    const numValue = parseInt(value) || 0;
-    onUpdatePlan(productId, day, numValue);
-  };
-
-  const handleFocus = (e: FocusEvent<HTMLInputElement>) => {
-    e.target.select();
-  };
 
   const handleAddSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -258,14 +308,9 @@ export function PlanningGrid({
                         </td>
                         {DAYS.map(day => (
                           <td key={day.key} className="px-1 py-2">
-                            <input 
-                              type="number"
-                              min="0"
-                              value={planValues[day.key] || ''}
-                              onFocus={handleFocus}
-                              onChange={(e) => handleUpdate(productId, day.key, e.target.value)}
-                              placeholder="0"
-                              className="w-full bg-stone-100/50 border border-transparent focus:border-amber-400 focus:bg-white rounded-lg px-1 py-2 text-center text-xs font-black text-stone-900 transition-all outline-none"
+                            <PlanInput 
+                              initialValue={planValues[day.key] || 0}
+                              onUpdate={(val) => onUpdatePlan(productId, day.key, val)}
                             />
                           </td>
                         ))}

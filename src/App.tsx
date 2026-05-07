@@ -524,7 +524,10 @@ export default function App() {
           <p className="text-stone-500 mb-10 leading-relaxed">Painel de Produção & Gerenciamento. Acesse para acompanhar as metas do dia.</p>
           
           <button 
-            onClick={signIn}
+            onClick={() => {
+              console.log("Tentando entrar com Google...");
+              signIn();
+            }}
             className="w-full bg-stone-900 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-stone-800 transition-all shadow-lg hover:shadow-stone-900/10 active:scale-[0.98]"
           >
             <LogIn className="w-5 h-5" />

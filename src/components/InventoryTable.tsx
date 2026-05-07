@@ -138,7 +138,7 @@ export function ProductionPlanningTable({ tasks, teamColors, weeklyHistory, week
                         {view === 'daily' ? (
                           <>
                             <td className="px-6 py-4 text-center">
-                              <span className="font-black text-stone-900">{task.quantity}</span>
+                              <span className="font-black text-stone-900">{weeklyPlans[task.id]?.[todayKey] ?? task.quantity}</span>
                               <span className="text-[9px] font-bold text-stone-400 uppercase ml-1">{task.unit}</span>
                             </td>
                             <td className="px-6 py-4 text-center">
