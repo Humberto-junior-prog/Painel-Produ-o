@@ -16,14 +16,14 @@ export function ProductionPanel({ tasks, userName, onUpdateStatus, teamColors, w
   const todayKey = days[new Date().getDay()];
 
   const userTasks = tasks.filter(t => {
-    const isAssigned = t.assignee === userName;
+    const isAssigned = t.assignee?.trim().toLowerCase() === userName?.trim().toLowerCase();
     const plan = weeklyPlans[t.id];
-    const todayQuantity = plan ? plan[todayKey] : t.quantity;
+    const todayQuantity = (plan && plan[todayKey] !== undefined) ? plan[todayKey] : t.quantity;
     return isAssigned && todayQuantity > 0;
   });
 
   const dayOfWeek = new Intl.DateTimeFormat('pt-BR', { weekday: 'long' }).format(new Date());
-  const userColor = teamColors[userName] || teamColors.Gerente;
+  const userColor = teamColors[userName] || teamColors.Gerente || TEAM_COLORS.Gerente;
 
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-stone-100 overflow-hidden">
@@ -47,7 +47,8 @@ export function ProductionPanel({ tasks, userName, onUpdateStatus, teamColors, w
         ) : (
           userTasks.map((task, idx) => {
             const plan = weeklyPlans[task.id];
-            const taskQuantity = plan ? plan[todayKey] : task.quantity;
+            const taskQuantity = (plan && plan[todayKey] !== undefined) ? plan[todayKey] : task.quantity;
+            const isDoneToday = task.history?.[todayKey] === true;
             
             return (
               <motion.div 
@@ -59,7 +60,7 @@ export function ProductionPanel({ tasks, userName, onUpdateStatus, teamColors, w
               >
                 <div className="flex items-center gap-3 overflow-hidden flex-1">
                   <div className={`w-1 h-8 rounded-full ${userColor.bg} opacity-20 group-hover:opacity-100 transition-opacity`} />
-                  {task.status === 'Concluído' ? (
+                  {isDoneToday ? (
                     <div className="bg-emerald-100 text-emerald-600 p-2 rounded-xl shrink-0">
                       <CheckCircle2 className="w-5 h-5" />
                     </div>
@@ -94,15 +95,15 @@ export function ProductionPanel({ tasks, userName, onUpdateStatus, teamColors, w
                 <div className="flex flex-col items-center">
                   <button 
                     onClick={() => {
-                      onUpdateStatus?.(task.id, task.status === 'Concluído' ? 'Pendente' : 'Concluído');
+                      onUpdateStatus?.(task.id, isDoneToday ? 'Pendente' : 'Concluído');
                     }}
                     className={`px-10 py-3 rounded-2xl text-sm font-bold transition-all shadow-md active:scale-95 ${
-                      task.status === 'Concluído' 
+                      isDoneToday 
                         ? 'bg-emerald-600 text-white shadow-emerald-500/10' 
                         : 'bg-amber-500 text-stone-900 hover:bg-amber-400 shadow-amber-500/10'
                     }`}
                   >
-                    {task.status === 'Concluído' ? 'Feito' : 'Produzir'}
+                    {isDoneToday ? 'Feito' : 'Produzir'}
                   </button>
                 </div>
               </div>

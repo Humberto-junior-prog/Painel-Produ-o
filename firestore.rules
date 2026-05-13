@@ -27,19 +27,19 @@ service cloud.firestore {
         && data.assignee is string && data.assignee.size() <= 100
         && (data.status == 'Pendente' || data.status == 'Concluído')
         && data.plans is map
-        && data.history is map;
+        && data.history is map
+        && data.quantity is number
+        && data.order is number;
     }
 
     match /products/{productId} {
       allow read: if isSignedIn();
-      allow create: if isSignedIn() && isValidId(productId) && isValidProduct(incoming());
+      allow create: if isSignedIn() && isValidId(productId);
       allow update: if isSignedIn() && (
-        // Action: Colaborador updates status
-        (incoming().diff(existing()).affectedKeys().hasOnly(['status', 'history', 'updatedAt']) && (incoming().status == 'Pendente' || incoming().status == 'Concluído')) ||
-        // Action: Planejamento updates plans
-        (incoming().diff(existing()).affectedKeys().hasOnly(['plans', 'status', 'updatedAt'])) ||
-        // Action: Full edit (Gerente)
-        (incoming().diff(existing()).affectedKeys().hasOnly(['productName', 'assignee', 'unit', 'order', 'isNew', 'updatedAt', 'plans', 'history', 'status']) && isValidProduct(incoming()))
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'productName', 'assignee', 'unit', 'order', 'isNew', 
+          'updatedAt', 'plans', 'history', 'status', 'quantity'
+        ])
       );
       allow delete: if isSignedIn();
     }

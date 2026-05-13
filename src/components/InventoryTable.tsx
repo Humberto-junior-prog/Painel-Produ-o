@@ -6,15 +6,15 @@ import { motion } from 'motion/react';
 interface ProductionPlanningTableProps {
   tasks: ProductionTask[];
   onAddTask?: () => void;
+  teamMembers: string[];
   teamColors: Record<string, { bg: string, text: string, border: string }>;
   weeklyHistory: Record<string, Record<string, boolean>>;
   weeklyPlans: Record<string, Record<string, number>>;
   view: 'daily' | 'weekly';
+  onUpdateProductAssignee?: (productId: string, newAssignee: string) => void;
 }
 
-export function ProductionPlanningTable({ tasks, teamColors, weeklyHistory, weeklyPlans, view }: ProductionPlanningTableProps) {
-  const teamMembers = Object.keys(teamColors).filter(name => name !== 'Gerente' && name !== 'Planejamento');
-  
+export function ProductionPlanningTable({ tasks, teamMembers, teamColors, weeklyHistory, weeklyPlans, view, onUpdateProductAssignee }: ProductionPlanningTableProps) {
   const now = new Date();
   const currentDayIndex = now.getDay(); // 0 (Dom) - 6 (Sab)
   const currentHour = now.getHours();
@@ -42,14 +42,14 @@ export function ProductionPlanningTable({ tasks, teamColors, weeklyHistory, week
     <div className="space-y-8">
       <div className="grid grid-cols-1 gap-6">
         {teamMembers.map((member) => {
-          const memberTasks = tasks.filter(t => t.assignee === member);
+          const memberTasks = tasks.filter(t => t.assignee?.trim().toLowerCase() === member?.trim().toLowerCase());
           
           let progress = 0;
           let totalAssigned = 0;
 
           if (view === 'daily') {
             const tasksWithQuantity = memberTasks.filter(t => (weeklyPlans[t.id]?.[todayKey] ?? 0) > 0);
-            const completedCount = tasksWithQuantity.filter(t => t.status === 'Concluído').length;
+            const completedCount = tasksWithQuantity.filter(t => weeklyHistory[t.id]?.[todayKey]).length;
             totalAssigned = tasksWithQuantity.length;
             progress = totalAssigned > 0 ? Math.round((completedCount / totalAssigned) * 100) : 100;
           } else {
@@ -73,7 +73,7 @@ export function ProductionPlanningTable({ tasks, teamColors, weeklyHistory, week
             progress = totalAssigned > 0 ? Math.round((weeklyCompletedPoints / totalAssigned) * 100) : 100;
           }
 
-          const memberColor = teamColors[member] || teamColors.Gerente;
+          const memberColor = teamColors[member] || teamColors.Gerente || TEAM_COLORS.Gerente;
 
           return (
             <motion.div 
@@ -143,9 +143,9 @@ export function ProductionPlanningTable({ tasks, teamColors, weeklyHistory, week
                             </td>
                             <td className="px-6 py-4 text-center">
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-tighter ${
-                                task.status === 'Concluído' ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-stone-400'
+                                weeklyHistory[task.id]?.[todayKey] ? 'bg-emerald-100 text-emerald-700' : 'bg-stone-100 text-stone-400'
                               }`}>
-                                {task.status}
+                                {weeklyHistory[task.id]?.[todayKey] ? 'Concluído' : 'Pendente'}
                               </span>
                             </td>
                           </>
@@ -191,6 +191,101 @@ export function ProductionPlanningTable({ tasks, teamColors, weeklyHistory, week
             </motion.div>
           );
         })}
+
+        {/* Orphan Tasks Section */}
+        {(() => {
+          const orphanTasks = tasks.filter(t => !teamMembers.some(m => m.trim().toLowerCase() === t.assignee?.trim().toLowerCase()));
+          if (orphanTasks.length === 0) return null;
+
+          return (
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white rounded-3xl shadow-sm border border-stone-100 overflow-hidden"
+            >
+              <div className="p-5 border-b border-stone-100 bg-stone-50 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-stone-200 rounded-xl flex items-center justify-center">
+                    <UserCircle className="w-6 h-6 text-stone-400" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-stone-500 text-lg leading-none">Sem Responsável</h4>
+                    <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-1">
+                      {orphanTasks.length} Produtos pendentes de ajuste
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-white text-stone-400">
+                      <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-[0.2em] min-w-[200px]">Produto</th>
+                      {view === 'daily' ? (
+                        <>
+                          <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-center">Quantidade</th>
+                          <th className="px-6 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-center">Status</th>
+                        </>
+                      ) : (
+                        weekDays.map(day => (
+                          <th key={day.key} className="px-2 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-center">{day.label}</th>
+                        ))
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-50">
+                    {orphanTasks.map((task) => (
+                      <tr key={task.id} className="hover:bg-stone-50/50 transition-colors group">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-1 h-6 rounded-full bg-stone-200 opacity-50" />
+                            <div className="flex flex-col gap-1">
+                                <p className="font-bold text-stone-800 text-sm uppercase tracking-tight">{task.productName}</p>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-[9px] text-stone-400 font-bold uppercase italic">Assign: {task.assignee || 'N/A'}</span>
+                                  {onUpdateProductAssignee && (
+                                    <select 
+                                      onChange={(e) => onUpdateProductAssignee(task.id, e.target.value)}
+                                      className="bg-white border border-stone-100 text-[8px] font-black uppercase rounded-lg px-2 py-0.5 outline-none shadow-sm"
+                                      defaultValue=""
+                                    >
+                                      <option value="" disabled>Trocar</option>
+                                      {teamMembers.map(m => <option key={m} value={m}>{m}</option>)}
+                                    </select>
+                                  )}
+                                </div>
+                            </div>
+                          </div>
+                        </td>
+                        {view === 'daily' ? (
+                          <>
+                            <td className="px-6 py-4 text-center">
+                              <span className="font-black text-stone-900">{weeklyPlans[task.id]?.[todayKey] ?? task.quantity}</span>
+                              <span className="text-[9px] font-bold text-stone-400 uppercase ml-1">{task.unit}</span>
+                            </td>
+                            <td className="px-6 py-4 text-center text-stone-300">
+                               -
+                            </td>
+                          </>
+                        ) : (
+                          weekDays.map(day => {
+                            const quantityPlanned = weeklyPlans[task.id]?.[day.key] ?? 0;
+                            return (
+                              <td key={day.key} className="px-2 py-4 text-center">
+                                <div className={`w-3.5 h-3.5 rounded-sm mx-auto ${quantityPlanned > 0 ? 'bg-stone-300' : 'bg-stone-100'}`} />
+                              </td>
+                            );
+                          })
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          );
+        })()}
       </div>
     </div>
   );

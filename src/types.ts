@@ -9,6 +9,8 @@ export interface ProductionTask {
   assignee: TeamMember;
   startTime?: string;
   isNew?: boolean;
+  history?: Record<string, boolean>;
+  plans?: Record<string, number>;
 }
 
 export interface DailyProductionStats {
